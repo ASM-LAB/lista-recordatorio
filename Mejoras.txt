@@ -1,1 +1,3 @@
-POder poner cantidad en las listas
+Poner poner cantidad en las listas
+generar hoja excel o texto con la lista de acciones
+poner fecha limite a las acciones
