@@ -3,7 +3,7 @@
   "name": "Listas de Recordatorio",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "./favicon.svg",
       "type": "image/svg+xml",
       "sizes": "512x512 192x192 64x64 32x32",
       "purpose": "any maskable"
