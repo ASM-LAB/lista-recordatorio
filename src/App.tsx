@@ -33,7 +33,7 @@ export const App: React.FC = () => {
   const fetchLists = useCallback(async () => {
     if (!session?.user?.id) return;
     const { data, error } = await supabase
-      .from('lists')
+      .from('lr_lists')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -44,7 +44,7 @@ export const App: React.FC = () => {
 
   const fetchListDetailData = useCallback(async (listId: string) => {
     const { data: catData } = await supabase
-      .from('categories')
+      .from('lr_categories')
       .select('*')
       .eq('list_id', listId)
       .order('created_at', { ascending: true });
@@ -52,7 +52,7 @@ export const App: React.FC = () => {
     if (catData) setCategories(catData);
 
     const { data: itemData } = await supabase
-      .from('list_items')
+      .from('lr_list_items')
       .select('*')
       .eq('list_id', listId)
       .order('created_at', { ascending: true });
@@ -60,7 +60,7 @@ export const App: React.FC = () => {
     if (itemData && itemData.length > 0) {
       const itemIds = itemData.map((i) => i.id);
       const { data: itemCatData } = await supabase
-        .from('item_categories')
+        .from('lr_item_categories')
         .select('item_id, category_id')
         .in('item_id', itemIds);
 
@@ -114,28 +114,28 @@ export const App: React.FC = () => {
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'lists' },
+        { event: '*', schema: 'public', table: 'lr_lists' },
         () => {
           fetchLists();
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'categories' },
+        { event: '*', schema: 'public', table: 'lr_categories' },
         () => {
           if (selectedListId) fetchListDetailData(selectedListId);
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'list_items' },
+        { event: '*', schema: 'public', table: 'lr_list_items' },
         () => {
           if (selectedListId) fetchListDetailData(selectedListId);
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'item_categories' },
+        { event: '*', schema: 'public', table: 'lr_item_categories' },
         () => {
           if (selectedListId) fetchListDetailData(selectedListId);
         }
@@ -150,7 +150,7 @@ export const App: React.FC = () => {
   const handleCreateList = async (title: string, description: string) => {
     if (!session?.user?.id) return;
     const { data, error } = await supabase
-      .from('lists')
+      .from('lr_lists')
       .insert({
         title,
         description,
@@ -166,7 +166,7 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteList = async (listId: string) => {
-    const { error } = await supabase.from('lists').delete().eq('id', listId);
+    const { error } = await supabase.from('lr_lists').delete().eq('id', listId);
     if (!error) {
       if (selectedListId === listId) {
         setSelectedListId(null);
@@ -177,7 +177,7 @@ export const App: React.FC = () => {
 
   const handleAddCategory = async (name: string) => {
     if (!selectedListId) return;
-    await supabase.from('categories').insert({
+    await supabase.from('lr_categories').insert({
       list_id: selectedListId,
       name,
     });
@@ -186,7 +186,7 @@ export const App: React.FC = () => {
 
   const handleDeleteCategory = async (categoryId: string) => {
     if (!selectedListId) return;
-    await supabase.from('categories').delete().eq('id', categoryId);
+    await supabase.from('lr_categories').delete().eq('id', categoryId);
     await fetchListDetailData(selectedListId);
   };
 
@@ -199,7 +199,7 @@ export const App: React.FC = () => {
     if (!selectedListId) return;
 
     const { data: newItem, error } = await supabase
-      .from('list_items')
+      .from('lr_list_items')
       .insert({
         list_id: selectedListId,
         type,
@@ -214,7 +214,7 @@ export const App: React.FC = () => {
         item_id: newItem.id,
         category_id: catId,
       }));
-      await supabase.from('item_categories').insert(rows);
+      await supabase.from('lr_item_categories').insert(rows);
     }
 
     await fetchListDetailData(selectedListId);
@@ -222,7 +222,7 @@ export const App: React.FC = () => {
 
   const handleToggleItem = async (itemId: string, isCompleted: boolean) => {
     await supabase
-      .from('list_items')
+      .from('lr_list_items')
       .update({ is_completed: isCompleted })
       .eq('id', itemId);
 
@@ -230,14 +230,14 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteItem = async (itemId: string) => {
-    await supabase.from('list_items').delete().eq('id', itemId);
+    await supabase.from('lr_list_items').delete().eq('id', itemId);
     if (selectedListId) await fetchListDetailData(selectedListId);
   };
 
   const handleResetList = async () => {
     if (!selectedListId) return;
     await supabase
-      .from('list_items')
+      .from('lr_list_items')
       .update({ is_completed: false })
       .eq('list_id', selectedListId);
 
