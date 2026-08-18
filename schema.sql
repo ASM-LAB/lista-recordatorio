@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS public.lr_list_items (
     list_id UUID NOT NULL REFERENCES public.lr_lists(id) ON DELETE CASCADE,
     type VARCHAR(20) NOT NULL CHECK (type IN ('component', 'action')),
     title VARCHAR(255) NOT NULL,
+    quantity INTEGER DEFAULT 1 NOT NULL,
+    due_date DATE,
     is_completed BOOLEAN DEFAULT FALSE NOT NULL,
     applies_to_all BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
