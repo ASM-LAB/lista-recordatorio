@@ -3,13 +3,25 @@
   "name": "Listas de Recordatorio",
   "icons": [
     {
+      "src": "./pwa-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
       "src": "./favicon.svg",
       "type": "image/svg+xml",
-      "sizes": "512x512 192x192 64x64 32x32",
-      "purpose": "any maskable"
+      "sizes": "any",
+      "purpose": "any"
     }
   ],
-  "start_url": "/",
+  "start_url": "./",
   "background_color": "#f8fafc",
   "theme_color": "#2563eb",
   "display": "standalone",
