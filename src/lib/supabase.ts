@@ -27,6 +27,8 @@ export type ListItem = {
   list_id: string;
   type: ItemType;
   title: string;
+  quantity?: number;
+  due_date?: string | null;
   is_completed: boolean;
   applies_to_all: boolean;
   created_at: string;

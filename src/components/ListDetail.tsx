@@ -11,7 +11,8 @@ import {
   Package,
   CheckCircle2,
   X,
-  Filter
+  Filter,
+  Calendar
 } from 'lucide-react';
 
 interface ListDetailProps {
@@ -25,7 +26,9 @@ interface ListDetailProps {
     type: ItemType,
     title: string,
     appliesToAll: boolean,
-    categoryIds: string[]
+    categoryIds: string[],
+    quantity?: number,
+    dueDate?: string | null
   ) => Promise<void>;
   onToggleItem: (itemId: string, isCompleted: boolean) => Promise<void>;
   onDeleteItem: (itemId: string) => Promise<void>;
@@ -52,6 +55,8 @@ export const ListDetail: React.FC<ListDetailProps> = ({
   const [showItemModal, setShowItemModal] = useState(false);
   const [itemType, setItemType] = useState<ItemType>('component');
   const [itemTitle, setItemTitle] = useState('');
+  const [itemQuantity, setItemQuantity] = useState<number>(1);
+  const [itemDueDate, setItemDueDate] = useState<string>('');
   const [itemAppliesToAll, setItemAppliesToAll] = useState(false);
   const [itemCategoryIds, setItemCategoryIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -81,6 +86,8 @@ export const ListDetail: React.FC<ListDetailProps> = ({
   const openItemModal = (type: ItemType) => {
     setItemType(type);
     setItemTitle('');
+    setItemQuantity(1);
+    setItemDueDate('');
     setItemAppliesToAll(false);
     setItemCategoryIds([]);
     setShowItemModal(true);
@@ -94,7 +101,9 @@ export const ListDetail: React.FC<ListDetailProps> = ({
       itemType,
       itemTitle.trim(),
       itemAppliesToAll,
-      itemAppliesToAll ? [] : itemCategoryIds
+      itemAppliesToAll ? [] : itemCategoryIds,
+      itemType === 'component' ? Math.max(1, itemQuantity || 1) : 1,
+      itemType === 'action' && itemDueDate ? itemDueDate : null
     );
     setItemTitle('');
     setSubmitting(false);
@@ -369,6 +378,35 @@ export const ListDetail: React.FC<ListDetailProps> = ({
                 />
               </div>
 
+              {itemType === 'component' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Cantidad
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={itemQuantity}
+                    onChange={(e) => setItemQuantity(parseInt(e.target.value, 10) || 1)}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-slate-800"
+                  />
+                </div>
+              )}
+
+              {itemType === 'action' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Fecha límite (Opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={itemDueDate}
+                    onChange={(e) => setItemDueDate(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-slate-800"
+                  />
+                </div>
+              )}
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-slate-700">
@@ -455,6 +493,22 @@ interface ItemRowProps {
 }
 
 const ItemRow: React.FC<ItemRowProps> = ({ item, onToggle, onDelete }) => {
+  const formatDate = (dateStr: string) => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
+  const isOverdue = (dateStr: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const due = new Date(year, month - 1, day);
+    return due < today;
+  };
+
   return (
     <div
       className={`flex items-center justify-between p-3 rounded-xl border transition ${
@@ -475,16 +529,35 @@ const ItemRow: React.FC<ItemRowProps> = ({ item, onToggle, onDelete }) => {
           )}
         </button>
         <div className="min-w-0">
-          <p
-            className={`text-sm font-medium transition break-words ${
-              item.is_completed
-                ? 'line-through text-slate-400'
-                : 'text-slate-800'
-            }`}
-          >
-            {item.title}
-          </p>
+          <div className="flex items-center gap-2">
+            <p
+              className={`text-sm font-medium transition break-words ${
+                item.is_completed
+                  ? 'line-through text-slate-400'
+                  : 'text-slate-800'
+              }`}
+            >
+              {item.title}
+            </p>
+            {item.type === 'component' && item.quantity && item.quantity > 1 && (
+              <span className="text-xs font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md shrink-0">
+                x{item.quantity}
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            {item.type === 'action' && item.due_date && (
+              <span
+                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                  !item.is_completed && isOverdue(item.due_date)
+                    ? 'bg-red-50 text-red-600 border border-red-100'
+                    : 'bg-amber-50 text-amber-700'
+                }`}
+              >
+                <Calendar size={10} />
+                {formatDate(item.due_date)}
+              </span>
+            )}
             {item.applies_to_all ? (
               <span className="text-[10px] font-semibold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md">
                 Todas las categorías

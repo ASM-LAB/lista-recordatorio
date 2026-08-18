@@ -194,7 +194,9 @@ export const App: React.FC = () => {
     type: ItemType,
     title: string,
     appliesToAll: boolean,
-    categoryIds: string[]
+    categoryIds: string[],
+    quantity: number = 1,
+    dueDate: string | null = null
   ) => {
     if (!selectedListId) return;
 
@@ -204,6 +206,8 @@ export const App: React.FC = () => {
         list_id: selectedListId,
         type,
         title,
+        quantity: type === 'component' ? quantity : 1,
+        due_date: type === 'action' ? dueDate : null,
         applies_to_all: appliesToAll,
       })
       .select()
