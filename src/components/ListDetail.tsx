@@ -13,7 +13,8 @@ import {
   X,
   Filter,
   Calendar,
-  Pencil
+  Pencil,
+  Download
 } from 'lucide-react';
 
 interface ListDetailProps {
@@ -159,6 +160,73 @@ export const ListDetail: React.FC<ListDetailProps> = ({
   const componentItems = filterItems('component');
   const actionItems = filterItems('action');
 
+  const handleExportTxt = () => {
+    const lines: string[] = [];
+
+    lines.push(list.title);
+    if (list.description) {
+      lines.push(list.description);
+    }
+    lines.push('');
+
+    const activeCats =
+      selectedCategoryIds.length > 0
+        ? categories.filter((c) => selectedCategoryIds.includes(c.id))
+        : categories;
+
+    if (activeCats.length > 0) {
+      lines.push(`Categorías: ${activeCats.map((c) => c.name).join(', ')}`);
+    } else {
+      lines.push('Categorías: Ninguna');
+    }
+    lines.push('');
+
+    lines.push('COMPONENTES:');
+    if (componentItems.length === 0) {
+      lines.push('  (Ningún componente)');
+    } else {
+      componentItems.forEach((item) => {
+        const checkbox = item.is_completed ? '[x]' : '[ ]';
+        const qtyStr = item.quantity && item.quantity > 1 ? ` (x${item.quantity})` : '';
+        lines.push(`${checkbox} ${item.title}${qtyStr}`);
+      });
+    }
+    lines.push('');
+
+    lines.push('ACCIONES:');
+    if (actionItems.length === 0) {
+      lines.push('  (Ninguna acción)');
+    } else {
+      actionItems.forEach((item) => {
+        const checkbox = item.is_completed ? '[x]' : '[ ]';
+        const dateStr = item.due_date
+          ? ` (Fecha límite: ${formatDateForTxt(item.due_date)})`
+          : '';
+        lines.push(`${checkbox} ${item.title}${dateStr}`);
+      });
+    }
+
+    const content = lines.join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const sanitizedTitle = list.title.replace(/[/\\?%*:|"<>]/g, '_');
+    link.download = `${sanitizedTitle || 'lista'}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const formatDateForTxt = (dateStr: string) => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto p-4 sm:p-6">
       <div className="mb-6">
@@ -178,6 +246,13 @@ export const ListDetail: React.FC<ListDetailProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleExportTxt}
+              className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium text-sm rounded-xl transition flex items-center gap-2"
+              title="Exportar como TXT"
+            >
+              <Download size={16} /> Exportar TXT
+            </button>
             <button
               onClick={async () => {
                 if (confirm('¿Deseas desmarcar todos los componentes y acciones de esta lista?')) {
