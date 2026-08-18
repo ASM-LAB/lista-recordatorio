@@ -238,6 +238,41 @@ export const App: React.FC = () => {
     if (selectedListId) await fetchListDetailData(selectedListId);
   };
 
+  const handleUpdateItem = async (
+    itemId: string,
+    title: string,
+    appliesToAll: boolean,
+    categoryIds: string[],
+    quantity: number = 1,
+    dueDate: string | null = null
+  ) => {
+    if (!selectedListId) return;
+
+    const { error } = await supabase
+      .from('lr_list_items')
+      .update({
+        title,
+        quantity,
+        due_date: dueDate,
+        applies_to_all: appliesToAll,
+      })
+      .eq('id', itemId);
+
+    if (!error) {
+      await supabase.from('lr_item_categories').delete().eq('item_id', itemId);
+
+      if (!appliesToAll && categoryIds.length > 0) {
+        const rows = categoryIds.map((catId) => ({
+          item_id: itemId,
+          category_id: catId,
+        }));
+        await supabase.from('lr_item_categories').insert(rows);
+      }
+    }
+
+    await fetchListDetailData(selectedListId);
+  };
+
   const handleResetList = async () => {
     if (!selectedListId) return;
     await supabase
@@ -307,6 +342,7 @@ export const App: React.FC = () => {
             onAddItem={handleAddItem}
             onToggleItem={handleToggleItem}
             onDeleteItem={handleDeleteItem}
+            onUpdateItem={handleUpdateItem}
             onResetList={handleResetList}
           />
         ) : (

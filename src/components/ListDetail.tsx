@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   X,
   Filter,
-  Calendar
+  Calendar,
+  Pencil
 } from 'lucide-react';
 
 interface ListDetailProps {
@@ -32,6 +33,14 @@ interface ListDetailProps {
   ) => Promise<void>;
   onToggleItem: (itemId: string, isCompleted: boolean) => Promise<void>;
   onDeleteItem: (itemId: string) => Promise<void>;
+  onUpdateItem: (
+    itemId: string,
+    title: string,
+    appliesToAll: boolean,
+    categoryIds: string[],
+    quantity?: number,
+    dueDate?: string | null
+  ) => Promise<void>;
   onResetList: () => Promise<void>;
 }
 
@@ -45,6 +54,7 @@ export const ListDetail: React.FC<ListDetailProps> = ({
   onAddItem,
   onToggleItem,
   onDeleteItem,
+  onUpdateItem,
   onResetList,
 }) => {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -53,6 +63,7 @@ export const ListDetail: React.FC<ListDetailProps> = ({
   const [newCategoryName, setNewCategoryName] = useState('');
 
   const [showItemModal, setShowItemModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<ListItem | null>(null);
   const [itemType, setItemType] = useState<ItemType>('component');
   const [itemTitle, setItemTitle] = useState('');
   const [itemQuantity, setItemQuantity] = useState<number>(1);
@@ -84,6 +95,7 @@ export const ListDetail: React.FC<ListDetailProps> = ({
   };
 
   const openItemModal = (type: ItemType) => {
+    setEditingItem(null);
     setItemType(type);
     setItemTitle('');
     setItemQuantity(1);
@@ -93,19 +105,42 @@ export const ListDetail: React.FC<ListDetailProps> = ({
     setShowItemModal(true);
   };
 
+  const openEditModal = (item: ListItem) => {
+    setEditingItem(item);
+    setItemType(item.type);
+    setItemTitle(item.title);
+    setItemQuantity(item.quantity || 1);
+    setItemDueDate(item.due_date || '');
+    setItemAppliesToAll(item.applies_to_all);
+    setItemCategoryIds(item.categories ? item.categories.map((c) => c.id) : []);
+    setShowItemModal(true);
+  };
+
   const handleAddItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemTitle.trim()) return;
     setSubmitting(true);
-    await onAddItem(
-      itemType,
-      itemTitle.trim(),
-      itemAppliesToAll,
-      itemAppliesToAll ? [] : itemCategoryIds,
-      itemType === 'component' ? Math.max(1, itemQuantity || 1) : 1,
-      itemType === 'action' && itemDueDate ? itemDueDate : null
-    );
+    if (editingItem) {
+      await onUpdateItem(
+        editingItem.id,
+        itemTitle.trim(),
+        itemAppliesToAll,
+        itemAppliesToAll ? [] : itemCategoryIds,
+        itemType === 'component' ? Math.max(1, itemQuantity || 1) : 1,
+        itemType === 'action' && itemDueDate ? itemDueDate : null
+      );
+    } else {
+      await onAddItem(
+        itemType,
+        itemTitle.trim(),
+        itemAppliesToAll,
+        itemAppliesToAll ? [] : itemCategoryIds,
+        itemType === 'component' ? Math.max(1, itemQuantity || 1) : 1,
+        itemType === 'action' && itemDueDate ? itemDueDate : null
+      );
+    }
     setItemTitle('');
+    setEditingItem(null);
     setSubmitting(false);
     setShowItemModal(false);
   };
@@ -267,6 +302,7 @@ export const ListDetail: React.FC<ListDetailProps> = ({
                     key={item.id}
                     item={item}
                     onToggle={onToggleItem}
+                    onEdit={openEditModal}
                     onDelete={onDeleteItem}
                   />
                 ))}
@@ -304,6 +340,7 @@ export const ListDetail: React.FC<ListDetailProps> = ({
                     key={item.id}
                     item={item}
                     onToggle={onToggleItem}
+                    onEdit={openEditModal}
                     onDelete={onDeleteItem}
                   />
                 ))}
@@ -357,7 +394,7 @@ export const ListDetail: React.FC<ListDetailProps> = ({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full p-6">
             <h2 className="text-lg font-bold text-slate-800 mb-4">
-              Añadir {itemType === 'component' ? 'Componente' : 'Acción'}
+              {editingItem ? 'Editar' : 'Añadir'} {itemType === 'component' ? 'Componente' : 'Acción'}
             </h2>
             <form onSubmit={handleAddItemSubmit} className="space-y-4">
               <div>
@@ -475,7 +512,7 @@ export const ListDetail: React.FC<ListDetailProps> = ({
                   disabled={submitting}
                   className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-md transition disabled:opacity-50"
                 >
-                  {submitting ? 'Guardando...' : 'Añadir'}
+                  {submitting ? 'Guardando...' : editingItem ? 'Guardar Cambios' : 'Añadir'}
                 </button>
               </div>
             </form>
@@ -489,10 +526,11 @@ export const ListDetail: React.FC<ListDetailProps> = ({
 interface ItemRowProps {
   item: ListItem;
   onToggle: (id: string, isCompleted: boolean) => Promise<void>;
+  onEdit: (item: ListItem) => void;
   onDelete: (id: string) => Promise<void>;
 }
 
-const ItemRow: React.FC<ItemRowProps> = ({ item, onToggle, onDelete }) => {
+const ItemRow: React.FC<ItemRowProps> = ({ item, onToggle, onEdit, onDelete }) => {
   const formatDate = (dateStr: string) => {
     const parts = dateStr.split('-');
     if (parts.length === 3) {
@@ -576,13 +614,22 @@ const ItemRow: React.FC<ItemRowProps> = ({ item, onToggle, onDelete }) => {
         </div>
       </div>
 
-      <button
-        onClick={() => onDelete(item.id)}
-        className="text-slate-300 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition shrink-0"
-        title="Eliminar elemento"
-      >
-        <Trash2 size={16} />
-      </button>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => onEdit(item)}
+          className="text-slate-300 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition shrink-0"
+          title="Editar elemento"
+        >
+          <Pencil size={16} />
+        </button>
+        <button
+          onClick={() => onDelete(item.id)}
+          className="text-slate-300 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition shrink-0"
+          title="Eliminar elemento"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
     </div>
   );
 };
